@@ -1,0 +1,78 @@
+\section{Основная часть}
+\subsection{Обзор похожих работ}
+	...
+	
+\subsection{Высокоуровневое представление}
+
+Для Java программиста FlatArray выглядит как обычный Java класс со следующими методами:
+\begin{lstlisting}
+static <T, S extends FlatArray<T>> S newArray(final Class<S> faClass, final int length)
+\end{lstlisting}
+Создает новый FA класса S длиной length. Неявно вызывает конструктор c сигнатурой для всех элементов типа T. Проверяет ограничения на S и T перед созданием. Если проверки не были пройдены, кидает соответствующее исключение.
+\begin{lstlisting}
+T get(final int index)
+\end{lstlisting}
+Возвращает соответствующий индексу элемент. Бросает ArrayOutOfBoundException, если индекс выходит за границы массива.
+\begin{lstlisting}
+void set(T object, final int index).
+\end{lstlisting}
+Копирует поля object в элемент по данному индексу. Если object не null, помечает объект, что то был инициализирован явно. Бросает ArrayOutOfBoundException, если индекс выходит за границы массива.
+\begin{lstlisting}
+bool sentinel(final int index).
+\end{lstlisting}
+Проверяет, что элемент по данному индексу явно инициализирован.
+\begin{lstlisting}
+int length()
+\end{lstlisting}
+Возвращает длину массива. 
+\par
+Элемент flattened array реализует интерфейс FAElement, который имеет один метод void set(FAElement object). Он копирует поля object в this. 
+Пример использования
+\begin{lstlisting}
+// Реализация класса элемента
+class Point implement FAElement {
+	int x, y;
+	Point() {
+		this.x = 0; 
+		this.y = 0; 
+	}
+	void set(FAElement p) { 
+		this.x = ((Point)p).x; 
+		this.y = ((Point)p).y; 
+	}
+}
+
+// FlatArray для данного класса
+class PointArray extends FlatArray<Point> {
+	private PointArray(final int length) { 
+		super(length); 
+	}
+	public Point get(final int index) { 
+		return super.get(index); 
+	}
+	public void set(Point value, final Point index) { 
+		super.set(value, index); 
+	}
+	public static PointArray newArray(final int length) { 
+		return FlatArray.newArray(PointArray.class, length); 
+	}
+}
+\end{lstlisting}
+
+\subsection{Представление внутри виртуальной машины}
+Несмотря на то, что идея flattened array достаточно проста, ее реализация потребовала переработки многих компонент виртуальной машины: загрузчика классов, сборщика мусора, внутренний CI (compiler interface), runtime представление классов и Falcon компилятора.
+\par 
+Стоит отметить, что все Java методы класса FlatArray реализованы внутри виртуальной машины, однако подходы сильно различаются. Так, для режима интерпретации используется native вызов кода внутри виртуальной машины, написанного на С++. Этот метод слишком медленный, поскольку не позволяет использовать все возможные плюсы flattened array. Потому, когда falcon компилирует вызывающий метод, он использует интринсики. В нашем случае это подготовленные куски кода на LLVM IR, которые могут быть встроены в вызывающего и оптимизированы под конкретный тип flattened array. 
+\par
+Одной из самых острых проблем со стороны компилятора, которая привела к изменению в среде исполнения, оказалась свертка размера элемента в константу при выполнении адресной арифметики. Это происходило из-за того, что виртуальная машина не могла связать идентификатор конкретного FlatArray класса (kid - “klass” identifier) с ekid (element “klass” identifier). С помощью kid компилятор может вычислить размер объекта.
+
+\subsection{Ограничения}
+Flattened array имеет следующие ограничения:
+\begin{enumerate}
+	\item Элемент не должен имеет тип интерфейса, абстрактного класса, массива или flattened array
+	\item Класс-элемент реализовывает интерфейс FAElement
+	\item Наследник Flat Array не должен иметь нестатические поля
+	\item Нельзя применять Unsafe операции и рефлексию
+\end{enumerate}
+
+\clearpage
