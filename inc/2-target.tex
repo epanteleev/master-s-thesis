@@ -1,5 +1,86 @@
-\section{Реализация модуля}
+\section{Реализация FlatArray}
+\subsection{Первая версия}
+Раскладка полей внутри FlatArray изображена на \ref{first-fa}.
+Данная структура состоит из нескольких частей:
+\begin{enumerate}
+	\item header; заголовок объекта, который включает в себя markWord, поля для хранения длины массива и KID элемента.
+	\item последовательность ссылок на объекты
+	\item сами объекты
+\end{enumerate}
+\begin{figure}[h]
+	\caption{Первая версия FlatArray}\label{first-fa}
+	\includegraphics[width=0.95\linewidth]{image/flatarray.png}
+\end{figure}
+В реальности этот FlatArray представляет собой обычный Java массив класса Type[].class, у которого позади расположены элементы. Доступ к определенному элементу может быть осуществлен двумя способами: стандартным, через чтение и разыменование указателя, или путем вычисления адреса. 
+JVM использует оба подхода. При интерпретации или исполнении С1 скомпилированного кода применяется первый подход, falcon - второй. 
+Как упоминалось ранее, режим С1 и интерпретатор используют JNI методы для работы с FA. Однако при falcon компиляции JNI реализации подменяются специально подготовленными интринсиками. 
+Свойство nullability достигается путем добавления поля 'isSentinel' во внутрь элемента. 
+В конечном итоге такая раскладка FlatArray имеет ряд недостатков:
+\begin{enumerate}
+	\item Проверка nullability достаточно медленная. Особенно в случае not-existing, поскольку мы имеем большее число промахов кеша по сравнению с классическим Java массивом.
+	\item Необходимо вычислять размер элемента массива для адресной арифметики, что дает значительные накладные расходы. Либо необходимо хранить размер элемента где-то внутри структуры данных, что и было применено в последствии.
+	\item Нет поддержки сборки мусора, поскольку такой FlatArray неотличим от обычного Java массива объектов. 
+	Необходимо корректно предоставлять метаинформацию о этом объекте. 
+\end{enumerate}
+Влияние этих недостатков можно увидеть в таблицах \textcolor{red}{(оформить нормально)} \ref{old-hashMap-perf1}б \ref{old-hashMap-perf2} и \ref{old-hashMap-perf3}:
 
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap only-existing.}\label{old-hashMap-perf1}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 7051 \\
+			\hline mapLoop    & 6489 \\
+			\hline 
+	\end{tabular}}
+\end{table}
 
-	
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap fifty-fifty.}\label{old-hashMap-perf2}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 6498 \\
+			\hline mapLoop    & 6642 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap not-existing.}\label{old-hashMap-perf3}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 23384 \\
+			\hline mapLoop    & 30371 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+Как видно из таблиц, в режиме only-existing новая HashMap выигрывает старую, но в других случаях сильно отстает. Это связано с вышеперечисленными факторами. 
+
+\subsection{Представление с sentinel array}
+\begin{figure}[h]
+	\caption{Первая версия FlatArray}\label{first-fa}
+	\includegraphics[width=0.95\linewidth]{image/flatarray-new.png}
+\end{figure}
+
+\subsection{Текущее представление}
+Новое внутреннее представление FlatArray изображено на рисунке \ref{last-fa}
+\begin{figure}[h]
+	\caption{Текущее представление FlatArray}\label{last-fa}
+	\includegraphics[width=0.95\linewidth]{image/flat-array-without-sentinel.png}
+\end{figure}
+Этот массив имеет несколько полей:
+\begin{itemize}
+	\item markWord [8 byte]; 
+	\item length [4 byte]; длина массива
+	\item Последовательность элементов вместе с метаинформацией:
+		\begin{itemize}
+			\item offset[4 byte]; Смещение от заголовка текущего элемента до заголовка FlatArray.
+			\item bool[1 byte]; показывает, что данный элемент был инициализирован.
+			\item pad; выравнивание.
+			\item object; элемент массива.
+		\end{itemize}
+\end{itemize}
+
 \clearpage
