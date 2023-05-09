@@ -59,11 +59,55 @@ JVM использует оба подхода. При интерпретаци�
 Как видно из таблиц, в режиме only-existing новая HashMap выигрывает старую, но в других случаях сильно отстает. Это связано с вышеперечисленными факторами. 
 
 \subsection{Представление с sentinel array}
+В этом разделе представлена альтернативная версия раскладки полей FlatArray. В ней учтены недостатки предыдущего подхода.
 \begin{figure}[h]
 	\caption{Первая версия FlatArray}\label{first-fa}
 	\includegraphics[width=0.95\linewidth]{image/flatarray-new.png}
 \end{figure}
+Этот массив состоит из следующих полей:
+\begin{itemize}
+	\item header[8 byte]; markWord этого объекта
+	\item length [4 byte]; длина массива
+	\item ekid [4 byte]; KID элемента массива
+	\item sentinel array; массив элементов типа bool, который показывает, какие элементы внутри были явно инициализированы
+	\item pad; поле для выравнивания 
+	\item Последовательность элементов вместе с метаинформацией
+\end{itemize}
+Поля 'isSentinel' вынесены в одну компактную область памяти, что в итоге уменьшает число промахов кеша в режиме 'not-existing'.
+Это можно увидеть в таблицах \ref{sentinel-hashMap-perf1}б \ref{sentinel-hashMap-perf2} и \ref{sentinel-hashMap-perf3}:
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap only-existing.}\label{sentinel-hashMap-perf1}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 7051 \\
+			\hline mapLoop    & 6489 \\
+			\hline 
+	\end{tabular}}
+\end{table}
 
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap fifty-fifty.}\label{sentinel-hashMap-perf2}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 6498 \\
+			\hline mapLoop    & 6642 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap not-existing.}\label{sentinel-hashMap-perf3}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 23384 \\
+			\hline mapLoop    & 30371 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+ 
 \subsection{Текущее представление}
 Новое внутреннее представление FlatArray изображено на рисунке \ref{last-fa}
 \begin{figure}[h]
@@ -74,6 +118,7 @@ JVM использует оба подхода. При интерпретаци�
 \begin{itemize}
 	\item markWord [8 byte]; 
 	\item length [4 byte]; длина массива
+	\item ekid [4 byte]; KID элемента массива
 	\item Последовательность элементов вместе с метаинформацией:
 		\begin{itemize}
 			\item offset[4 byte]; Смещение от заголовка текущего элемента до заголовка FlatArray.
