@@ -1,4 +1,4 @@
-\section{Реализация FlatArray}
+\section{Реализация}
 \subsection{Первая версия}
 Раскладка полей внутри FlatArray изображена на \ref{first-fa}.
 Данная структура состоит из нескольких частей:
@@ -22,41 +22,6 @@ JVM использует оба подхода. При интерпретаци�
 	\item Нет поддержки сборки мусора, поскольку такой FlatArray неотличим от обычного Java массива объектов. 
 	Необходимо корректно предоставлять метаинформацию о этом объекте. 
 \end{enumerate}
-Влияние этих недостатков можно увидеть в таблицах \textcolor{red}{(оформить нормально)} \ref{old-hashMap-perf1}б \ref{old-hashMap-perf2} и \ref{old-hashMap-perf3}:
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap only-existing.}\label{old-hashMap-perf1}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 7051 \\
-			\hline mapLoop    & 6489 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap fifty-fifty.}\label{old-hashMap-perf2}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 6498 \\
-			\hline mapLoop    & 6642 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap not-existing.}\label{old-hashMap-perf3}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 23384 \\
-			\hline mapLoop    & 30371 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-Как видно из таблиц, в режиме only-existing новая HashMap выигрывает старую, но в других случаях сильно отстает. Это связано с вышеперечисленными факторами. 
 
 \subsection{Представление с sentinel array}
 В этом разделе представлена альтернативная версия раскладки полей FlatArray. В ней учтены недостатки предыдущего подхода.
@@ -74,14 +39,15 @@ JVM использует оба подхода. При интерпретаци�
 	\item Последовательность элементов вместе с метаинформацией
 \end{itemize}
 Поля 'isSentinel' вынесены в одну компактную область памяти, что в итоге уменьшает число промахов кеша в режиме 'not-existing'.
-Это можно увидеть в таблицах \ref{sentinel-hashMap-perf1}б \ref{sentinel-hashMap-perf2} и \ref{sentinel-hashMap-perf3}:
+Результаты тестирования производительности можно увидеть в таблицах \ref{sentinel-hashMap-perf1}, \ref{sentinel-hashMap-perf2} и \ref{sentinel-hashMap-perf3}:
+
 \begin{table}[H]
 	\centering
 	\caption{Производительность HashMap only-existing.}\label{sentinel-hashMap-perf1}
 	\textit{\begin{tabular}{|c|c|}
 			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 7051 \\
-			\hline mapLoop    & 6489 \\
+			\hline faMapLoop  & 5523 \\
+			\hline mapLoop    & 5646 \\
 			\hline 
 	\end{tabular}}
 \end{table}
@@ -91,8 +57,8 @@ JVM использует оба подхода. При интерпретаци�
 	\caption{Производительность HashMap fifty-fifty.}\label{sentinel-hashMap-perf2}
 	\textit{\begin{tabular}{|c|c|}
 			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 6498 \\
-			\hline mapLoop    & 6642 \\
+			\hline faMapLoop  & 6122 \\
+			\hline mapLoop    & 5833 \\
 			\hline 
 	\end{tabular}}
 \end{table}
@@ -102,7 +68,7 @@ JVM использует оба подхода. При интерпретаци�
 	\caption{Производительность HashMap not-existing.}\label{sentinel-hashMap-perf3}
 	\textit{\begin{tabular}{|c|c|}
 			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 23384 \\
+			\hline faMapLoop  & 34216 \\
 			\hline mapLoop    & 30371 \\
 			\hline 
 	\end{tabular}}
@@ -127,5 +93,61 @@ JVM использует оба подхода. При интерпретаци�
 			\item object; элемент массива.
 		\end{itemize}
 \end{itemize}
+Результаты тестирования производительности можно увидеть в таблицах \ref{new-hashMap-perf1}, \ref{new-hashMap-perf2} и \ref{new-hashMap-perf3}: 
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap only-existing.}\label{new-hashMap-perf1}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 6032 \\
+			\hline mapLoop    & 5654 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap fifty-fifty.}\label{new-hashMap-perf2}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 5393 \\
+			\hline mapLoop    & 5824 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Производительность HashMap not-existing.}\label{new-hashMap-perf3}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 19401 \\
+			\hline mapLoop    & 25757 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+Как видно из таблиц, поиск существующего ключа в хеш-таблице, базирующейся на FlatArray, менее эффективно, чем в стандартной HashMap, однако в других случаях мы имеем хорошую производительность.
+\textcolor{red}{оформление таблиц}
+\begin{table}[H]
+	\centering
+	\caption{Производительность FlatArray only-existing.}\label{new-flatArray-perf1}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 6032 \\
+			\hline mapLoop    & 5654 \\
+			\hline 
+	\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Производительность FlatArray not-existing.}\label{new-flatArray-perf3}
+	\textit{\begin{tabular}{|c|c|}
+			\hline Benchmark  & Score, op/s \\
+			\hline faMapLoop  & 19401 \\
+			\hline mapLoop    & 25757 \\
+			\hline 
+	\end{tabular}}
+\end{table}
 
 \clearpage
