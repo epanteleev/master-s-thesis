@@ -1,149 +1,149 @@
-
-\subsection{Первая версия}
-Раскладка полей внутри FlatArray изображена на \ref{first-fa}.
-Данная структура состоит из нескольких частей:
-\begin{enumerate}
-	\item header; заголовок объекта, который включает в себя markWord, поля для хранения длины массива и KID элемента.
-	\item последовательность ссылок на объекты
-	\item сами объекты
-\end{enumerate}
-\begin{figure}[h]
-	\caption{Первая версия FlatArray}\label{first-fa}
-	\includegraphics[width=0.95\linewidth]{image/flatarray.png}
-\end{figure}
-В реальности этот FlatArray представляет собой обычный Java массив класса Type[].class, у которого позади расположены элементы. Доступ к определенному элементу может быть осуществлен двумя способами: стандартным, через чтение и разыменование указателя, или путем вычисления адреса. 
-JVM использует оба подхода. При интерпретации или исполнении С1 скомпилированного кода применяется первый подход, falcon - второй. 
-Как упоминалось ранее, режим С1 и интерпретатор используют JNI методы для работы с FA. Однако при falcon компиляции JNI реализации подменяются специально подготовленными интринсиками. 
-Свойство nullability достигается путем добавления поля 'isSentinel' во внутрь элемента. 
-В конечном итоге такая раскладка FlatArray имеет ряд недостатков:
-\begin{enumerate}
-	\item Проверка nullability достаточно медленная. Особенно в случае not-existing, поскольку мы имеем большее число промахов кеша по сравнению с классическим Java массивом.
-	\item Необходимо вычислять размер элемента массива для адресной арифметики, что дает значительные накладные расходы. Либо необходимо хранить размер элемента где-то внутри структуры данных, что и было применено в последствии.
-	\item Нет поддержки сборки мусора, поскольку такой FlatArray неотличим от обычного Java массива объектов. 
-	Необходимо корректно предоставлять метаинформацию о этом объекте. 
-\end{enumerate}
-
-\subsection{Представление с sentinel array}
-В этом разделе представлена альтернативная версия раскладки полей FlatArray. В ней учтены недостатки предыдущего подхода.
-\begin{figure}[h]
-	\caption{Первая версия FlatArray}\label{first-fa}
-	\includegraphics[width=0.95\linewidth]{image/flatarray-new.png}
-\end{figure}
-Этот массив состоит из следующих полей:
-\begin{itemize}
-	\item header[8 byte]; markWord этого объекта
-	\item length [4 byte]; длина массива
-	\item ekid [4 byte]; KID элемента массива
-	\item sentinel array; массив элементов типа bool, который показывает, какие элементы внутри были явно инициализированы
-	\item pad; поле для выравнивания 
-	\item Последовательность элементов вместе с метаинформацией
-\end{itemize}
-Поля 'isSentinel' вынесены в одну компактную область памяти, что в итоге уменьшает число промахов кеша в режиме 'not-existing'.
-Результаты тестирования производительности можно увидеть в таблицах \ref{sentinel-hashMap-perf1}, \ref{sentinel-hashMap-perf2} и \ref{sentinel-hashMap-perf3}:
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap only-existing.}\label{sentinel-hashMap-perf1}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 5523 \\
-			\hline mapLoop    & 5646 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap fifty-fifty.}\label{sentinel-hashMap-perf2}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 6122 \\
-			\hline mapLoop    & 5833 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap not-existing.}\label{sentinel-hashMap-perf3}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 34216 \\
-			\hline mapLoop    & 30371 \\
-			\hline 
-	\end{tabular}}
-\end{table}
- 
-\subsection{Текущее представление}
-Новое внутреннее представление FlatArray изображено на рисунке \ref{last-fa}
-\begin{figure}[h]
-	\caption{Текущее представление FlatArray}\label{last-fa}
-	\includegraphics[width=0.95\linewidth]{image/flat-array-without-sentinel.png}
-\end{figure}
-Этот массив имеет несколько полей:
-\begin{itemize}
-	\item markWord [8 byte]; 
-	\item length [4 byte]; длина массива
-	\item ekid [4 byte]; KID элемента массива
-	\item Последовательность элементов вместе с метаинформацией:
-		\begin{itemize}
-			\item offset[4 byte]; Смещение от заголовка текущего элемента до заголовка FlatArray.
-			\item bool[1 byte]; показывает, что данный элемент был инициализирован.
-			\item pad; выравнивание.
-			\item object; элемент массива.
-		\end{itemize}
-\end{itemize}
-Результаты тестирования производительности можно увидеть в таблицах \ref{new-hashMap-perf1}, \ref{new-hashMap-perf2} и \ref{new-hashMap-perf3}: 
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap only-existing.}\label{new-hashMap-perf1}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 6032 \\
-			\hline mapLoop    & 5654 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap fifty-fifty.}\label{new-hashMap-perf2}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 5393 \\
-			\hline mapLoop    & 5824 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-
-\begin{table}[H]
-	\centering
-	\caption{Производительность HashMap not-existing.}\label{new-hashMap-perf3}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark  & Score, op/s \\
-			\hline faMapLoop  & 19401 \\
-			\hline mapLoop    & 25757 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-Как видно из таблиц, поиск существующего ключа в хеш-таблице, базирующейся на FlatArray, менее эффективно, чем в стандартной HashMap, однако в других случаях мы имеем хорошую производительность.
-\begin{table}[H]
-	\centering
-	\caption{Производительность FlatArray only-existing.}\label{new-flatArray-perf1}
-	\textit{\begin{tabular}{|c|c|}
-			\hline Benchmark              & Score, op/s \\
-			\hline flatArrayLoop          & 58843 \\
-			\hline basicArrayLoop         & 33184 \\
-			\hline flatArray              & 653577811 \\
-			\hline basicArray             & 579119776 \\
-			\hline flatArraySentinel      & 387515918 \\
-			\hline basicArraySentinel     & 373422833 \\
-			\hline flatArrayLoopSentinel  & 41450 \\
-			\hline basicArrayLoopSentinel & 30810 \\
-			\hline 
-	\end{tabular}}
-\end{table}
-Результаты тестирования производительности элементарных операций над FlatArray и Java массивом объектов приведены в таблице \ref{new-flatArray-perf1}. Как мы видим, FlatArray имеет лучшие результаты, чем обычный массив.
+\section{Основная часть}
+\subsection{Обзор похожих работ}
+В этом разделе буду описываться похожие решения и идеи.
+\subsubsection{Automatic Object Inlining} 
+В первую очередь стоит отметить работу Christian Wimmer "Automatic Object Inlining in a Java Virtual Machine"\cite{wimmer-field-inlining}.
+Автор этой работы разработал алгоритм, который может перемещать элементы к самому массиву.
+Для этих целей автор во время загрузки классов находит методы, которые меняют значения ссылочных полей. 
+Помимо стандартного профилирования Java, описанного в разделе \ref{pgo}, разработчик применят особые барьеры записи, которые подсчитывают количество чтений данного поля. Когда этот счетчик достигает некоторого порога, то JVM производит object colocation. 
+Она позволяет разместить группу объектов в виде единого линейного куска памяти. 
+В дальнейшем компилятор может сгенерировать более оптимизированный код методов, используя информацию о расположении объектов. В частности, компилятор может избежать дополнительное чтение и разыменование указателя. 
+Однако во время компиляции для операций записи ссылки в горячее поле вставляется специальная проверка (guards for field stores), которая распознает попытку изменить значение поля. 
+Это приводит к деоптимизации, поскольку подобная подстановка объекта поля оказывается невозможной. Следует отметить, что техника object inlining применяется не только для элементов массивов, но и для полей объектов.
 \par
-После анализа было выяснено, что является главной причиной, почему производительность FlatArray в HashMap не дает похожего улучшения. Это связано с тем, что в HashMap чтение памяти не является узким местом, то есть производительность поиска по ключу ограничена пропускной способностью процессора, а не памяти. Связи с этим, FlatArray будет полезен в тех местах, где бутылочным горлышком будет доступ к памяти.
+Данная оптимизация дала прирост производительности на тестах SPECjvm98\cite{spec98}. 
+Но сожалению, данная методика имеет ряд ограничений, связанных с использованием рефлексии и Unsafe операций. Более того, она приводит к увеличению числа компиляций методов.
+\subsubsection{Проект "Valhalla"}
+Valhalla -- это проект по изменению системы типов в языке Java\cite{valhalla}. Он расширяет объектную модель Java определяемыми программистами объектами-значениями (value-objects) и примитивными типами, сочетая абстракции ООП с производительностью примитивов. Благодаря этому изменению, Java сможет создавать массивы объектов\cite{valhalla-value-object}.
+\par
+На момент написания работы, проект "Valhalla" находится в состоянии разработки. Однако существуют ранние сборки, которые все программисты могут опробовать.
+\par
+В отличии от проекта "Valhalla", FlatArray не требуют переработки системы типов языка.
+
+\subsubsection{Contained Objects}
+org.ObjectLayout -- это пакет, предоставляющий набор классов, разработанных с учетом оптимизации схемы памяти\cite{contained-obj}.
+Библиотека предоставляет следующие примитивы:
+\begin{enumerate}
+	\item StructuredArray -- интерфейс для создания массивов объектов как линейный участок памяти. 
+	\item Contained object -- позволяет создавать объекты со "встроенными" в них полями
+\end{enumerate}
+К сожалению, на текущий момент пакет не имеет поддержки ни в одной существующей JVM, а потому не дает прироста производительности. 
+
+\subsection{Высокоуровневое представление FlatArray}
+Для Java программиста FlatArray выглядит как обычный Java класс со следующими методами:
+\begin{lstlisting}
+	static <T, S extends FlatArray<T>> S newArray(final Class<S> faClass, final int length)
+\end{lstlisting}
+Создает новый FA класса S длиной length. Неявно вызывает конструктор c сигнатурой для всех элементов типа T. Проверяет ограничения на S и T перед созданием. Если проверки не были пройдены, кидает соответствующее исключение. Более подробно описание ограничений изложено в разделе \ref{limitation}.
+\begin{lstlisting}
+	T get(final int index)
+\end{lstlisting}
+Возвращает соответствующий индексу элемент. Бросает ArrayOutOfBoundException, если индекс выходит за границы массива.
+\begin{lstlisting}
+	void set(T object, final int index).
+\end{lstlisting}
+Копирует поля object в элемент по данному индексу. Если object не null, помечает объект, что то был инициализирован явно. Бросает ArrayOutOfBoundException, если индекс выходит за границы массива.
+\begin{lstlisting}
+	bool sentinel(final int index).
+\end{lstlisting}
+Проверяет, что элемент по данному индексу явно инициализирован.
+\begin{lstlisting}
+	int length()
+\end{lstlisting}
+Возвращает длину массива. 
+\par
+Элемент flattened array реализует интерфейс FAElement, который имеет один метод void set(FAElement object). Он копирует поля object в this. 
+Пример использования
+\begin{lstlisting}
+	// Реализация класса элемента
+	class Point implement FAElement {
+		int x, y;
+		Point() {
+			this.x = 0; 
+			this.y = 0; 
+		}
+		void set(FAElement p) { 
+			this.x = ((Point)p).x; 
+			this.y = ((Point)p).y; 
+		}
+	}
+	
+	// FlatArray для данного класса
+	class PointArray extends FlatArray<Point> {
+		private PointArray(final int length) { 
+			super(length); 
+		}
+		public Point get(final int index) { 
+			return super.get(index); 
+		}
+		public void set(Point value, final Point index) { 
+			super.set(value, index); 
+		}
+		public static PointArray newArray(final int length) { 
+			return FlatArray.newArray(PointArray.class, length); 
+		}
+	}
+\end{lstlisting}
+
+\subsection{Представление FlatArray внутри виртуальной машины}
+Несмотря на то, что идея flattened array достаточно проста, ее реализация потребовала переработки многих компонент виртуальной машины: загрузчика классов, сборщика мусора, внутренний CI (compiler interface), runtime представление классов и Falcon компилятора.
+\par 
+Стоит отметить, что все Java методы класса FlatArray реализованы внутри виртуальной машины, однако подходы сильно различаются. Так, для режима интерпретации, а так же для исполнения С1 скомпилированных методов, используется native вызов кода внутри виртуальной машины, написанного на С++. Этот подход достаточно прост в исполнении, поскольку не требует глубокой переработки виртуальной машины, однако приводит к дорогостоящему runtime вызову, который потенциально нивелирует все преимущество FlatArray. Более того, при таком подходе невозможны различные оптимизации компилятора, вроде открытой подстановки (inlining).
+В итоге, это не позволяет использовать все возможные плюсы flattened array. Потому, когда falcon компилирует вызывающий метод, он использует интринсики. Как упоминалось ранее, это конструкции, которые выглядят для программиста как обычные функции, но они реализуются компилятором. В нашем случае это подготовленные куски кода на LLVM IR, которые могут быть встроены в вызывающего и оптимизированы под конкретный тип flattened array и его элемента.  
+\par
+Одной из самых острых проблем со стороны компилятора, которая привела к изменению в среде исполнения, оказалась свертка размера элемента в константу при выполнении адресной арифметики. Это происходило из-за того, что виртуальная машина не могла связать идентификатор конкретного FlatArray класса (kid - “klass” identifier) с ekid (element “klass” identifier). С помощью kid компилятор может вычислить размер объекта. Кроме того, falcon считал, что вычисленный с помощью адресной арифметики указатель может быть равен null, хотя это не так. 
+\par 
+Работа с FlatArray начинается с момента инициализации виртуальной машины. Он загружается вместе с другими "well-known" классами и для него создается специализированное внутреннее представление. 
+Когда JVM начинает загружать наследников класса FlatArray, она так же создает для них специализированное представление.
+Это необходимо из-за следующих причин:
+\begin{enumerate}
+	\item Альтернативный подход к трассировки объекта сборщиком мусора
+	\item Необходимость связывать идентификатор класса FlatArray или его наследника с идентификатором элемента массива. В частности, компилятору необходима такая информация для проведения оптимизаций.
+\end{enumerate}
+\par
+На данный момент FlatArray интегрирован в JDK. Он представляется как расширение JDK, поставляемой вместе с виртуальной машиной.
+\subsection{Ограничения} \label{limitation}
+FlatArray может быть успешно использован далеко не во всех случаях, поскольку имеет ряд ограничений. На данный момент их существует несколько:
+\begin{enumerate}
+	\item Элемент не должен имеет тип интерфейса, абстрактного класса, массива или flattened array. Другими словами, размер типа элемента массива должен быть вычислим во время компиляции и быть константой.
+	\item Класс-элемент реализовывает интерфейс FAElement. Это требование связано с необходимостью распознавать возможные элементы массива во время загрузки класса.
+	\item Наследник Flat Array не должен иметь поля. Были проведены измерения, что дополнительные поля внутри FlatArray приводят к ухудшению производительности. Более того, виртуальная машина ожидает конкретную раскладку массива, которая описана в разделе \ref{label-description}.
+\end{enumerate}
+\par
+Однако существуют другого рода ограничения, связанные с особенностью реализации FlatArray внутри JVM: 
+\begin{enumerate}
+	\item Нельзя применять Unsafe операции и рефлексию.
+	\item Максимальный размер FlatArray равен 16 GB. Это ограничение появилось из-за требований сборщика мусора
+	\item Если хотя бы один элемент внутри массива живой с точки зрения сборщика мусора, то весь массив будет считаться живым. Это связано с ограничениями С4. Если FlatArray достаточно велик, то он будет выделен в отдельном регионе памяти, из которого сборщик мусора не переносит объекты в другие регионы. Игнорирование этого ограничения может привести к тому, что в итоге мелкие объекты окажутся в "big space" регионе.
+\end{enumerate}
+
+\subsection{Примеры использования}
+В этом разделе будет приведено сравнение интерфейсов для работы с Java массивом объектов и FlatArray. Создание объекта выглядит так:
+\begin{lstlisting}
+	// Java objects array
+	T[] array = new T[length];
+	// FlatArray
+	FA array = FlatArray.newArray(FA.class, length);
+\end{lstlisting}
+Проверка на "null" и доступ к элементу:
+\begin{lstlisting}
+	// Java objects array
+	if (array[idx] != null) {
+		field = array[idx].field;
+	}
+	// FlatArray
+	if (array.sentinel(idx)) {
+		field = array.get(idx).field;
+	}
+\end{lstlisting}
+Инициализация элемента:
+\begin{lstlisting}
+	// Java objects array
+	array[idx] = new T(arg1, arg2);
+	// FlatArray
+	array.get(idx).arg1 = arg1;
+	array.get(idx).arg2 = arg2;
+	array.mark(idx, true);
+\end{lstlisting}
+
 \clearpage
