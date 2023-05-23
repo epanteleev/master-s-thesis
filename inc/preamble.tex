@@ -59,7 +59,7 @@
 \makeatother
 
 \renewcommand{\baselinestretch}{1.5} % Полуторный межстрочный интервал
-\parindent 1.27cm % Абзацный отступ
+\parindent 1.25cm % Абзацный отступ
 
 \sloppy             % Избавляемся от переполнений
 \hyphenpenalty=1000 % Частота переносов
@@ -98,16 +98,13 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[C]{\textrm{\thepage}}
+\fancyfoot[C]{\textrm{\thepage}}
 \fancyheadoffset{0mm}
 \fancyfootoffset{0mm}
-\setlength{\headheight}{17pt}
+\setlength{\headheight}{14pt}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
-\fancypagestyle{empty} { 
-    \fancyhf{}
-    \rfoot{\thepage}
-}
+
 
 % Формат подрисуночных надписей
 \RequirePackage{caption}
