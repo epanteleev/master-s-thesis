@@ -19,6 +19,8 @@
 %\setsansfont{Liberation Sans} % Тут я его не использую, но если пригодится
 \setmonofont{FreeMono} % Моноширинный шрифт для оформления кода
 
+\newcommand{\size}[2]{{\fontsize{#1}{0}\selectfont#2}} % manage size of font
+
 % Русский язык
 \usepackage{polyglossia}
 \setdefaultlanguage{russian}
@@ -36,10 +38,6 @@
 \usepackage{graphicx} % Вставка картинок и дополнений
 \graphicspath{{image/}}
 
-% Формат подрисуночных записей
-\usepackage{chngcntr}
-\counterwithin{figure}{section}
-
 % Гиперссылки
 \usepackage{hyperref}
 \hypersetup{
@@ -49,12 +47,14 @@
     pdftitle={Эффективная реализация сопрограмм в управляемой среде исполнения.}
 }
 
+
+
 % Оформление библиографии и подрисуночных записей через точку
 \makeatletter
 \renewcommand*{\@biblabel}[1]{\hfill#1.}
 \renewcommand*\l@section{\@dottedtocline{1}{1em}{1em}}
-\renewcommand{\thefigure}{\thesection.\arabic{figure}} % Формат рисунка секция.номер
-\renewcommand{\thetable}{\thesection.\arabic{table}} % Формат таблицы секция.номер
+\renewcommand{\thefigure}{\arabic{figure}} % Формат рисунка секция.номер
+\renewcommand{\thetable}{\arabic{table}} % Формат таблицы секция.номер
 \def\redeflsection{\def\l@section{\@dottedtocline{1}{0em}{10em}}}
 \makeatother
 
@@ -104,7 +104,6 @@
 \setlength{\headheight}{14pt}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
-
 
 % Формат подрисуночных надписей
 \RequirePackage{caption}
@@ -164,11 +163,13 @@
 
 % Оформление заголовков
 
+\setcounter{secnumdepth}{-1}
 \usepackage[compact,explicit]{titlesec}
-\titleformat{\section}{}{}{12.5mm}{\centering{\thesection\quad\MakeTextUppercase{#1}}\vspace{1em}}
-\titleformat{\subsection}[block]{\vspace{1em}}{}{12.5mm}{\thesubsection\quad#1\vspace{1em}}
-\titleformat{\subsubsection}[block]{\vspace{1em}\normalsize}{}{12.5mm}{\thesubsubsection\quad#1\vspace{1em}}
+\titleformat{\section}{}{}{12.5mm}{\centering{\quad\MakeTextUppercase{#1}}\vspace{1em}}
+\titleformat{\subsection}[block]{\vspace{1em}}{}{12.5mm}{\quad#1\vspace{1em}}
+\titleformat{\subsubsection}[block]{\vspace{1em}\normalsize}{}{12.5mm}{\quad#1\vspace{1em}}
 \titleformat{\paragraph}[block]{\normalsize}{}{12.5mm}{\MakeTextUppercase{#1}}
+
 
 % Секции без номеров (введение, заключение...), вместо section*{}
 \newcommand{\anonsection}[1]{
