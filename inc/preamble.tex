@@ -148,35 +148,24 @@
 
 % Заголовки секций в оглавлении в верхнем регистре
 \usepackage{textcase}
-\makeatletter
-\let\oldcontentsline\contentsline
-\def\contentsline#1#2{
-    \expandafter\ifx\csname l@#1\endcsname\l@section
-        \expandafter\@firstoftwo
-    \else
-        \expandafter\@secondoftwo
-    \fi
-    {\oldcontentsline{#1}{\MakeTextUppercase{#2}}}
-    {\oldcontentsline{#1}{#2}}
-}
-\makeatother
 
 % Оформление заголовков
 
-\setcounter{secnumdepth}{-1}
 \usepackage[compact,explicit]{titlesec}
-\titleformat{\section}{}{}{12.5mm}{\centering{\quad\MakeTextUppercase{#1}}\vspace{1em}}
-\titleformat{\subsection}[block]{\vspace{1em}}{}{12.5mm}{\quad#1\vspace{1em}}
-\titleformat{\subsubsection}[block]{\vspace{1em}\normalsize}{}{12.5mm}{\quad#1\vspace{1em}}
-\titleformat{\paragraph}[block]{\normalsize}{}{12.5mm}{\MakeTextUppercase{#1}}
 
+\titleformat{\section}{}{}{12.5mm}{\centering{\quad\MakeTextUppercase{#1}}\vspace{1em}} \titleformat{\subsection}[block]{\vspace{1em}}{}{12.5mm}{\thesubsection\quad#1\vspace{1em}}                             \titleformat{\subsubsection}[block]{\vspace{1em}\normalsize}{}{12.5mm}{\thesubsubsection\quad#1\vspace{1em}}
+\titleformat{\paragraph}[block]{\normalsize}{}{12.5mm}{\MakeTextUppercase{#1}}
 
 % Секции без номеров (введение, заключение...), вместо section*{}
 \newcommand{\anonsection}[1]{
     \phantomsection % Корректный переход по ссылкам в содержании
     \paragraph{\centerline{{#1}}\vspace{1.5em}}
     \addcontentsline{toc}{section}{\uppercase{#1}}
+    \addtocounter{section}{1}
+    \setcounter{subsection}{1}
 }
+
+\renewcommand{\section}[2]{\anonsection{#1}}
 
 % Секции для приложений
 \newcommand{\appsection}[1]{
