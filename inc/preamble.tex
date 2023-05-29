@@ -162,10 +162,8 @@
     \paragraph{\centerline{{#1}}\vspace{1.5em}}
     \addcontentsline{toc}{section}{\uppercase{#1}}
     \addtocounter{section}{1}
-    \setcounter{subsection}{1}
+    \setcounter{subsection}{0}
 }
-
-\renewcommand{\section}[2]{\anonsection{#1}}
 
 % Секции для приложений
 \newcommand{\appsection}[1]{
